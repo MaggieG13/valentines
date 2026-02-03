@@ -235,7 +235,9 @@ button:disabled{
   80%  { transform: rotate(620deg) scale(0.99); }
   100% { transform: rotate(720deg) scale(1.00); }
 }
+
 /* ---------- 3D Dice layer ---------- */
+
 #dice3dLayer{
   position: fixed;
   inset: 0;
