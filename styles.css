@@ -268,3 +268,10 @@ button:disabled{
 .diceResultOverlay.show{
   opacity: 1;
 }
+
+.diag{
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: rgba(246,244,252,0.70);
+}
+.diag b{ color: rgba(246,244,252,0.92); }
