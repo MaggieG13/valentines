@@ -10,13 +10,17 @@
 <body>
   <div class="bg" aria-hidden="true"></div>
 
+  <!-- Fullscreen 3D dice canvas sits behind UI -->
+  <div id="dice3dLayer" aria-hidden="true"></div>
+
   <main class="wrap" id="appRoot">
     <section class="card" id="ui"></section>
   </main>
 
-  <!-- Simple “clack” sound: you can replace clack.mp3 with any short sound -->
   <audio id="clack" preload="auto" src="clack.mp3"></audio>
 
+  <!-- Three.js (CDN) -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
