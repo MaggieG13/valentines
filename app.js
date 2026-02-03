@@ -91,13 +91,13 @@ function directionText(roomName, tier) {
 const SHAKE_THRESHOLD = 18;
 const SHAKE_COOLDOWN_MS = 900;
 
-const STORAGE_KEY = "dark_valentine_v3";
+const STORAGE_KEY = "dark_valentine_v3_three";
 
 const STARTING_OBOLS = 3;
 const HINT_COST = 1;
 
 /* ===============================
-   ENGINE
+   ENGINE STATE / HELPERS
 ================================ */
 
 const ui = document.getElementById("ui");
@@ -107,11 +107,9 @@ const clackEl = document.getElementById("clack");
 let audioUnlocked = false;
 
 function unlockAudioOnce(){
-  // Call this from a user gesture (tap). After this, play() will work during shake rolls.
   if (audioUnlocked) return;
   if (!clackEl) { audioUnlocked = true; return; }
 
-  // Try a silent-ish priming play/pause
   clackEl.volume = 0.85;
   clackEl.currentTime = 0;
 
@@ -121,10 +119,7 @@ function unlockAudioOnce(){
       clackEl.pause();
       clackEl.currentTime = 0;
       audioUnlocked = true;
-    }).catch(() => {
-      // If it fails, we’ll keep trying on next tap
-      audioUnlocked = false;
-    });
+    }).catch(() => { audioUnlocked = false; });
   } else {
     audioUnlocked = true;
   }
@@ -132,7 +127,6 @@ function unlockAudioOnce(){
 
 function playClack(){
   if (!clackEl) return;
-  // Even after unlocking, some browsers want currentTime reset for rapid replays
   try {
     clackEl.currentTime = 0;
     clackEl.play().catch(()=>{});
@@ -172,19 +166,17 @@ function rollD20(){
   return (a[0] % 20) + 1;
 }
 
-/* ----- Fullscreen best-effort ----- */
-async function tryFullscreen(){
-  const el = document.documentElement;
-  const fn = el.requestFullscreen || el.webkitRequestFullscreen;
-  try { if (fn) await fn.call(el); } catch {}
-}
-
-/* ----- Motion permission (iOS) ----- */
 async function requestMotionPermission(){
   if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
     return DeviceMotionEvent.requestPermission();
   }
   return "granted";
+}
+
+async function tryFullscreen(){
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+  try { if (fn) await fn.call(el); } catch {}
 }
 
 /* ----- Shake listener ----- */
@@ -212,37 +204,175 @@ function installShakeListener(onShake){
   }, { passive: true });
 }
 
-/* ----- Dice animation ----- */
-function animateDiceToResult(result){
-  const d20 = document.getElementById("d20");
-  const num = document.getElementById("d20num");
-  if (!d20 || !num) return;
+/* ===============================
+   3D DICE (Three.js)
+   - A real 3D d20 mesh
+   - It tumbles + moves across the screen
+   - Then “lands” and reveals the correct number as an overlay
+================================ */
 
-  d20.classList.add("rolling");
+let three = null;
 
-  // play a few clacks while it rolls (works after audio unlock)
-  playClack();
-  setTimeout(playClack, 180);
-  setTimeout(playClack, 380);
-  setTimeout(playClack, 650);
+function initThreeDice(){
+  if (three) return;
 
-  let tick = 0;
-  const interval = setInterval(() => {
-    tick++;
-    num.textContent = String(((tick * 7) % 20) + 1);
-  }, 55);
+  const layer = document.getElementById("dice3dLayer");
+  if (!layer || !window.THREE) return;
 
-  setTimeout(() => {
-    clearInterval(interval);
-    num.textContent = String(result);
-    d20.classList.remove("rolling");
-    // final “settle” clack
-    setTimeout(playClack, 40);
-  }, 1100);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearAlpha(0);
+  layer.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50);
+  camera.position.set(0, 0.6, 6);
+
+  // Lights (gothic purple)
+  const key = new THREE.DirectionalLight(0xe6d7ff, 1.1);
+  key.position.set(3, 4, 5);
+  scene.add(key);
+
+  const fill = new THREE.DirectionalLight(0xff77cc, 0.45);
+  fill.position.set(-4, 2, 3);
+  scene.add(fill);
+
+  const rim = new THREE.PointLight(0x9a6dff, 1.2, 30);
+  rim.position.set(0, -2, 2);
+  scene.add(rim);
+
+  // D20 geometry (icosahedron)
+  const geometry = new THREE.IcosahedronGeometry(1.25, 0);
+
+  // Slightly “arcane” material
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x3b1a5a,
+    metalness: 0.55,
+    roughness: 0.26,
+    emissive: 0x120615,
+    emissiveIntensity: 0.9
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(0, 0, 0);
+  scene.add(mesh);
+
+  // A subtle aura plane behind it
+  const auraGeo = new THREE.PlaneGeometry(6, 6);
+  const auraMat = new THREE.MeshBasicMaterial({
+    color: 0x7a3cff,
+    transparent: true,
+    opacity: 0.06
+  });
+  const aura = new THREE.Mesh(auraGeo, auraMat);
+  aura.position.set(0, 0, -3);
+  scene.add(aura);
+
+  let anim = {
+    rolling: false,
+    start: 0,
+    duration: 1150,
+    fromPos: new THREE.Vector3(0, 0, 0),
+    toPos: new THREE.Vector3(0, -0.15, 0),
+    fromRot: new THREE.Euler(0, 0, 0),
+    toRot: new THREE.Euler(0, 0, 0)
+  };
+
+  function onResize(){
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", onResize);
+
+  function loop(ts){
+    requestAnimationFrame(loop);
+
+    // idle drift
+    if (!anim.rolling) {
+      mesh.rotation.y += 0.003;
+      mesh.rotation.x += 0.0015;
+      aura.rotation.z += 0.0008;
+    } else {
+      const t = Math.min(1, (ts - anim.start) / anim.duration);
+      const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2;
+
+      // position lerp (fly then settle)
+      mesh.position.lerpVectors(anim.fromPos, anim.toPos, ease);
+
+      // rotation blend: spin fast then slow down
+      mesh.rotation.set(
+        anim.fromRot.x + (anim.toRot.x - anim.fromRot.x) * ease,
+        anim.fromRot.y + (anim.toRot.y - anim.fromRot.y) * ease,
+        anim.fromRot.z + (anim.toRot.z - anim.fromRot.z) * ease
+      );
+
+      if (t >= 1) anim.rolling = false;
+    }
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+
+  // overlay for the number “landing”
+  let overlay = document.querySelector(".diceResultOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.className = "diceResultOverlay";
+    overlay.textContent = "";
+    document.body.appendChild(overlay);
+  }
+
+  function showOverlayNumber(n){
+    overlay.textContent = String(n);
+    overlay.classList.add("show");
+    setTimeout(() => overlay.classList.remove("show"), 650);
+  }
+
+  function rollAnimation(result){
+    // move across screen: start off to the side, end center-ish
+    anim.rolling = true;
+    anim.start = performance.now();
+    anim.duration = 1150;
+
+    // random start side for variety
+    const side = (Math.random() < 0.5) ? -1 : 1;
+    anim.fromPos = new THREE.Vector3(1.9 * side, 1.2, 0);
+    anim.toPos   = new THREE.Vector3(0, -0.10, 0);
+
+    anim.fromRot = new THREE.Euler(
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI
+    );
+
+    // we “land” with a stable orientation (not true face mapping, but looks like it settles)
+    anim.toRot = new THREE.Euler(
+      (result % 5) * 0.35,
+      (result % 7) * 0.42,
+      (result % 3) * 0.25
+    );
+
+    // clacks timed with the tumble
+    playClack();
+    setTimeout(playClack, 180);
+    setTimeout(playClack, 380);
+    setTimeout(playClack, 650);
+    setTimeout(() => { playClack(); showOverlayNumber(result); }, 1080);
+  }
+
+  three = { rollAnimation };
+}
+
+function rollDiceWith3D(result){
+  initThreeDice();
+  if (three?.rollAnimation) three.rollAnimation(result);
 }
 
 /* ===============================
-   SCREENS
+   UI SCREENS
 ================================ */
 
 function renderHome(){
@@ -252,13 +382,6 @@ function renderHome(){
     <h2>Dark Valentine Quest</h2>
     <p class="muted">Next destination:</p>
     <p class="room">${escapeHtml(room)}</p>
-
-    <div class="diceArea">
-      <div class="d20" id="d20" role="img" aria-label="Twenty-sided die">
-        <div class="shape"></div>
-        <div class="num" id="d20num">${state.lastRoll ?? "20"}</div>
-      </div>
-    </div>
 
     <div class="row">
       <span class="badge mono">Obols: ${state.obols}</span>
@@ -276,19 +399,21 @@ function renderHome(){
     </div>
 
     <div class="spacer"></div>
-    <p class="muted">iPhone: tap “Roll (shake)” once → allow Motion access → shake. Android: usually just works.</p>
+    <p class="muted">Tip: the 3D die rolls across the screen and “lands” on the result.</p>
   `;
 
   document.getElementById("fsBtn").onclick = () => {
-    unlockAudioOnce(); // user gesture; also unlock sound
+    unlockAudioOnce();
     tryFullscreen();
   };
 
   document.getElementById("shakeBtn").onclick = async () => {
-    unlockAudioOnce(); // IMPORTANT: unlock audio before any shake roll
+    unlockAudioOnce();
+    initThreeDice();
+
     const perm = await requestMotionPermission();
     if (perm !== "granted") {
-      ui.insertAdjacentHTML("beforeend", `<div class="hr"></div><p style="color: var(--danger);">Motion permission denied. Use “Roll (tap)”.</p>`);
+      ui.insertAdjacentHTML("beforeend", `<div class="hr"></div><p style="color: rgba(255,130,130,0.92);">Motion permission denied. Use “Roll (tap)”.</p>`);
       return;
     }
 
@@ -301,8 +426,9 @@ function renderHome(){
       state.lastRoll = r;
       state.armed = false;
       save();
-      animateDiceToResult(r);
-      setTimeout(renderDirection, 950);
+
+      rollDiceWith3D(r);
+      setTimeout(renderDirection, 1050);
     });
 
     ui.insertAdjacentHTML("beforeend", `<div class="hr"></div><p class="mono">Armed. Shake to roll…</p>`);
@@ -310,11 +436,13 @@ function renderHome(){
 
   document.getElementById("tapBtn").onclick = () => {
     unlockAudioOnce();
+    initThreeDice();
     const r = rollD20();
     state.lastRoll = r;
     save();
-    animateDiceToResult(r);
-    setTimeout(renderDirection, 950);
+
+    rollDiceWith3D(r);
+    setTimeout(renderDirection, 1050);
   };
 
   document.getElementById("resetBtn").onclick = () => {
@@ -370,7 +498,7 @@ function renderDirection(){
   document.getElementById("hintBtn").onclick = () => {
     if (!canBuyHint) return;
     unlockAudioOnce();
-    playClack(); // small “payment” clack
+    playClack();
     state.obols -= HINT_COST;
     state.paidHintUsedAtStep[state.stepIndex] = true;
     save();
@@ -401,6 +529,7 @@ function renderAction(){
     playClack();
     if (!state.completed.includes(action.id)) state.completed.push(action.id);
     save();
+
     if (roomCleared(room)) renderReward(room);
     else advance();
   };
