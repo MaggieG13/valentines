@@ -101,6 +101,10 @@ const HINT_COST = 1;
 ================================ */
 
 const ui = document.getElementById("ui");
+const diceOverlay = document.createElement("div");
+diceOverlay.className = "diceResultOverlay";
+diceOverlay.setAttribute("aria-hidden", "true");
+document.body.appendChild(diceOverlay);
 
 /* --- Sound --- */
 const clackEl = document.getElementById("clack");
@@ -297,7 +301,9 @@ function initThreeDice(){
   const labelMat = new THREE.MeshBasicMaterial({
     map: labelTexture,
     transparent: true,
-    depthWrite: false
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.DoubleSide
   });
   const labelMesh = new THREE.Mesh(new THREE.BufferGeometry(), labelMat);
   labelMesh.visible = false;
@@ -408,7 +414,7 @@ function initThreeDice(){
       .subVectors(v1, v0)
       .cross(new THREE.Vector3().subVectors(v2, v0))
       .normalize();
-    const offset = normal.clone().multiplyScalar(0.03);
+    const offset = normal.clone().multiplyScalar(0.07);
     v0.add(offset);
     v1.add(offset);
     v2.add(offset);
@@ -464,6 +470,7 @@ function initThreeDice(){
 
     setLabelGeometry(faceIndex);
     labelMesh.visible = true;
+    showResultOverlay(result);
 
     if (hideResultTimer) clearTimeout(hideResultTimer);
     hideResultTimer = setTimeout(() => {
@@ -505,6 +512,16 @@ function initThreeDice(){
   }
 
   three = { rollAnimation };
+}
+
+function showResultOverlay(result){
+  if (!diceOverlay) return;
+  diceOverlay.textContent = String(result);
+  diceOverlay.classList.add("show");
+  if (showResultOverlay.timer) clearTimeout(showResultOverlay.timer);
+  showResultOverlay.timer = setTimeout(() => {
+    diceOverlay.classList.remove("show");
+  }, 1800);
 }
 
 function rollDiceWith3D(result){
