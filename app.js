@@ -228,7 +228,7 @@ function initThreeDice(){
   const scene = new THREE.Scene();
 
   const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50);
-  camera.position.set(0, 0.6, 6);
+  camera.position.set(0, 0.6, 6.8);
 
   // Lights (gothic purple)
   const key = new THREE.DirectionalLight(0xe6d7ff, 1.1);
@@ -244,7 +244,7 @@ function initThreeDice(){
   scene.add(rim);
 
   // D20 geometry (icosahedron)
-  const geometry = new THREE.IcosahedronGeometry(1.3, 0);
+  const geometry = new THREE.IcosahedronGeometry(0.95, 0);
 
   // Neon purple + black material
   const material = new THREE.MeshStandardMaterial({
@@ -286,21 +286,12 @@ function initThreeDice(){
   liquid.position.set(0, -0.05, 0);
   mesh.add(liquid);
 
-  // Number sprite (displayed on the upper side)
-  const numberCanvas = document.createElement("canvas");
-  numberCanvas.width = 256;
-  numberCanvas.height = 256;
-  const numberCtx = numberCanvas.getContext("2d");
-  const numberTexture = new THREE.CanvasTexture(numberCanvas);
-  const numberMaterial = new THREE.SpriteMaterial({
-    map: numberTexture,
-    transparent: true,
-    opacity: 0
-  });
-  const numberSprite = new THREE.Sprite(numberMaterial);
-  numberSprite.position.set(0, 1.1, 0);
-  numberSprite.scale.set(1.2, 1.2, 1.2);
-  mesh.add(numberSprite);
+  const resultOverlay = document.querySelector(".diceResultOverlay") ?? (() => {
+    const el = document.createElement("div");
+    el.className = "diceResultOverlay";
+    document.body.appendChild(el);
+    return el;
+  })();
 
   // A subtle aura plane behind it
   const auraGeo = new THREE.PlaneGeometry(6, 6);
@@ -319,8 +310,8 @@ function initThreeDice(){
     duration: 1350,
     fromPos: new THREE.Vector3(0, 0, 0),
     toPos: new THREE.Vector3(0, -0.15, 0),
-    fromRot: new THREE.Euler(0, 0, 0),
-    toRot: new THREE.Euler(0, 0, 0)
+    fromQuat: new THREE.Quaternion(),
+    toQuat: new THREE.Quaternion()
   };
 
   function onResize(){
@@ -348,11 +339,7 @@ function initThreeDice(){
       mesh.position.lerpVectors(anim.fromPos, anim.toPos, ease);
 
       // rotation blend: spin fast then slow down
-      mesh.rotation.set(
-        anim.fromRot.x + (anim.toRot.x - anim.fromRot.x) * ease,
-        anim.fromRot.y + (anim.toRot.y - anim.fromRot.y) * ease,
-        anim.fromRot.z + (anim.toRot.z - anim.fromRot.z) * ease
-      );
+      mesh.quaternion.copy(anim.fromQuat).slerp(anim.toQuat, ease);
 
       liquid.position.y = -0.05 + Math.sin(ts * 0.008) * 0.12 * (1 - t);
       liquid.position.x = Math.cos(ts * 0.006) * 0.08 * (1 - t);
@@ -365,63 +352,72 @@ function initThreeDice(){
   }
   requestAnimationFrame(loop);
 
-  function setNumberSprite(n){
-    if (!numberCtx) return;
-    numberCtx.clearRect(0, 0, numberCanvas.width, numberCanvas.height);
-    numberCtx.fillStyle = "rgba(0,0,0,0)";
-    numberCtx.fillRect(0, 0, numberCanvas.width, numberCanvas.height);
+  function getFaceNormals(){
+    const normals = [];
+    const pos = geometry.attributes.position;
+    const index = geometry.index;
+    if (!index || !pos) return normals;
 
-    numberCtx.font = "900 150px 'Times New Roman', serif";
-    numberCtx.textAlign = "center";
-    numberCtx.textBaseline = "middle";
-    numberCtx.fillStyle = "rgba(230, 210, 255, 0.98)";
-    numberCtx.shadowColor = "rgba(160, 90, 255, 0.9)";
-    numberCtx.shadowBlur = 18;
-    numberCtx.fillText(String(n), numberCanvas.width / 2, numberCanvas.height / 2);
-    numberTexture.needsUpdate = true;
+    const vA = new THREE.Vector3();
+    const vB = new THREE.Vector3();
+    const vC = new THREE.Vector3();
+    const cb = new THREE.Vector3();
+    const ab = new THREE.Vector3();
+
+    for (let i = 0; i < index.count; i += 3) {
+      vA.fromBufferAttribute(pos, index.getX(i));
+      vB.fromBufferAttribute(pos, index.getX(i + 1));
+      vC.fromBufferAttribute(pos, index.getX(i + 2));
+      cb.subVectors(vC, vB);
+      ab.subVectors(vA, vB);
+      cb.cross(ab).normalize();
+      normals.push(cb.clone());
+    }
+    return normals;
+  }
+
+  const faceNormals = getFaceNormals();
+  let hideResultTimer = null;
+  let revealTimer = null;
+
+  function showResult(result){
+    resultOverlay.textContent = String(result);
+    resultOverlay.classList.add("show");
+    if (hideResultTimer) clearTimeout(hideResultTimer);
+    hideResultTimer = setTimeout(() => {
+      resultOverlay.classList.remove("show");
+    }, 5000);
   }
 
   function rollAnimation(result){
     // move across screen: start off to the side, end center-ish
     anim.rolling = true;
     anim.start = performance.now();
-    anim.duration = 1350;
+    anim.duration = 1500;
 
     // random start side for variety
     const side = (Math.random() < 0.5) ? -1 : 1;
-    anim.fromPos = new THREE.Vector3(3.2 * side, 1.65, 0.6);
-    anim.toPos   = new THREE.Vector3(0, 0.6, 0.2);
+    anim.fromPos = new THREE.Vector3(2.6 * side, 1.4, 0.5);
+    anim.toPos   = new THREE.Vector3(0, 0.5, 0.25);
 
-    anim.fromRot = new THREE.Euler(
-      Math.random() * Math.PI,
-      Math.random() * Math.PI,
-      Math.random() * Math.PI
-    );
+    anim.fromQuat = mesh.quaternion.clone();
 
-    // we “land” with a stable orientation (not true face mapping, but looks like it settles)
-    anim.toRot = new THREE.Euler(
-      Math.PI * 0.35 + (result % 5) * 0.25,
-      Math.PI * 0.15 + (result % 7) * 0.22,
-      Math.PI * 0.1 + (result % 3) * 0.2
-    );
+    const faceIndex = (result - 1) % faceNormals.length;
+    const normal = faceNormals[faceIndex] ?? new THREE.Vector3(0, 1, 0);
+    const up = new THREE.Vector3(0, 1, 0);
+    const alignQuat = new THREE.Quaternion().setFromUnitVectors(normal, up);
+    const yaw = new THREE.Quaternion().setFromAxisAngle(up, Math.random() * Math.PI * 2);
+    anim.toQuat = yaw.multiply(alignQuat);
 
-    numberSprite.material.opacity = 0;
-    setNumberSprite(result);
-
-    // clacks timed while tumbling
+    if (revealTimer) clearTimeout(revealTimer);
     playClack();
-    setTimeout(playClack, 180);
-    setTimeout(playClack, 360);
-    setTimeout(playClack, 520);
-    setTimeout(playClack, 700);
-    setTimeout(playClack, 880);
-
-    setTimeout(() => {
-      numberSprite.material.opacity = 1;
-      setTimeout(() => {
-        numberSprite.material.opacity = 0.75;
-      }, 700);
-    }, 1180);
+    revealTimer = setTimeout(() => {
+      if (clackEl) {
+        clackEl.pause();
+        clackEl.currentTime = 0;
+      }
+      showResult(result);
+    }, anim.duration);
   }
 
   three = { rollAnimation };
