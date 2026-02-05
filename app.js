@@ -286,12 +286,22 @@ function initThreeDice(){
   liquid.position.set(0, -0.05, 0);
   mesh.add(liquid);
 
-  const resultOverlay = document.querySelector(".diceResultOverlay") ?? (() => {
-    const el = document.createElement("div");
-    el.className = "diceResultOverlay";
-    document.body.appendChild(el);
-    return el;
-  })();
+  const labelCanvas = document.createElement("canvas");
+  labelCanvas.width = 256;
+  labelCanvas.height = 256;
+  const labelCtx = labelCanvas.getContext("2d");
+  const labelTexture = new THREE.CanvasTexture(labelCanvas);
+  labelTexture.minFilter = THREE.LinearFilter;
+  labelTexture.magFilter = THREE.LinearFilter;
+
+  const labelMat = new THREE.MeshBasicMaterial({
+    map: labelTexture,
+    transparent: true,
+    depthWrite: false
+  });
+  const labelMesh = new THREE.Mesh(new THREE.BufferGeometry(), labelMat);
+  labelMesh.visible = false;
+  mesh.add(labelMesh);
 
   // A subtle aura plane behind it
   const auraGeo = new THREE.PlaneGeometry(6, 6);
@@ -380,13 +390,87 @@ function initThreeDice(){
   let hideResultTimer = null;
   let revealTimer = null;
 
-  function showResult(result){
-    resultOverlay.textContent = String(result);
-    resultOverlay.classList.add("show");
+  function setLabelGeometry(faceIndex){
+    const pos = geometry.attributes.position;
+    const index = geometry.index;
+    if (!index || !pos) return;
+
+    const idx = faceIndex * 3;
+    const i0 = index.getX(idx);
+    const i1 = index.getX(idx + 1);
+    const i2 = index.getX(idx + 2);
+
+    const v0 = new THREE.Vector3().fromBufferAttribute(pos, i0);
+    const v1 = new THREE.Vector3().fromBufferAttribute(pos, i1);
+    const v2 = new THREE.Vector3().fromBufferAttribute(pos, i2);
+
+    const normal = new THREE.Vector3()
+      .subVectors(v1, v0)
+      .cross(new THREE.Vector3().subVectors(v2, v0))
+      .normalize();
+    const offset = normal.clone().multiplyScalar(0.03);
+    v0.add(offset);
+    v1.add(offset);
+    v2.add(offset);
+
+    const positions = new Float32Array([
+      v0.x, v0.y, v0.z,
+      v1.x, v1.y, v1.z,
+      v2.x, v2.y, v2.z
+    ]);
+    const uvs = new Float32Array([
+      0.5, 1,
+      0, 0,
+      1, 0
+    ]);
+
+    const faceGeo = new THREE.BufferGeometry();
+    faceGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    faceGeo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+    faceGeo.computeVertexNormals();
+
+    labelMesh.geometry.dispose();
+    labelMesh.geometry = faceGeo;
+  }
+
+  function updateLabel(result, faceIndex){
+    if (!labelCtx) return;
+    labelCtx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+    labelCtx.save();
+    labelCtx.beginPath();
+    labelCtx.moveTo(128, 22);
+    labelCtx.lineTo(22, 220);
+    labelCtx.lineTo(234, 220);
+    labelCtx.closePath();
+    labelCtx.clip();
+
+    labelCtx.fillStyle = "rgba(18, 8, 32, 0.82)";
+    labelCtx.beginPath();
+    labelCtx.moveTo(128, 22);
+    labelCtx.lineTo(22, 220);
+    labelCtx.lineTo(234, 220);
+    labelCtx.closePath();
+    labelCtx.fill();
+    labelCtx.strokeStyle = "rgba(230, 210, 255, 0.92)";
+    labelCtx.lineWidth = 5;
+    labelCtx.stroke();
+    labelCtx.fillStyle = "rgba(250, 248, 255, 0.98)";
+    labelCtx.font = "bold 112px ui-serif, Georgia, 'Times New Roman', serif";
+    labelCtx.textAlign = "center";
+    labelCtx.textBaseline = "middle";
+    labelCtx.fillText(String(result), 128, 140);
+    labelCtx.restore();
+    labelTexture.needsUpdate = true;
+
+    setLabelGeometry(faceIndex);
+    labelMesh.visible = true;
+
     if (hideResultTimer) clearTimeout(hideResultTimer);
     hideResultTimer = setTimeout(() => {
-      resultOverlay.classList.remove("show");
-    }, 5000);
+      labelMesh.visible = false;
+      mesh.visible = false;
+      aura.visible = false;
+    }, 3200);
   }
 
   function rollAnimation(result){
@@ -404,19 +488,19 @@ function initThreeDice(){
 
     const faceIndex = (result - 1) % faceNormals.length;
     const normal = faceNormals[faceIndex] ?? new THREE.Vector3(0, 1, 0);
-    const up = new THREE.Vector3(0, 1, 0);
-    const alignQuat = new THREE.Quaternion().setFromUnitVectors(normal, up);
-    const yaw = new THREE.Quaternion().setFromAxisAngle(up, Math.random() * Math.PI * 2);
-    anim.toQuat = yaw.multiply(alignQuat);
+    const toCamera = camera.position.clone().sub(mesh.position).normalize();
+    const alignQuat = new THREE.Quaternion().setFromUnitVectors(normal, toCamera);
+    const spin = new THREE.Quaternion().setFromAxisAngle(toCamera, Math.random() * Math.PI * 2);
+    anim.toQuat = spin.multiply(alignQuat);
 
     if (revealTimer) clearTimeout(revealTimer);
+    if (hideResultTimer) clearTimeout(hideResultTimer);
+    labelMesh.visible = false;
+    mesh.visible = true;
+    aura.visible = true;
     playClack();
     revealTimer = setTimeout(() => {
-      if (clackEl) {
-        clackEl.pause();
-        clackEl.currentTime = 0;
-      }
-      showResult(result);
+      updateLabel(result, faceIndex);
     }, anim.duration);
   }
 
