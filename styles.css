@@ -241,11 +241,11 @@ button:disabled{
 #dice3dLayer{
   position: fixed;
   inset: 0;
-  z-index: 0;            /* behind the UI card */
+  z-index: 4;            /* float above the UI card */
   pointer-events: none;  /* never blocks taps */
 }
 
-/* Make sure UI stays above the 3D layer */
+/* Keep UI below the 3D layer so the die rolls over text */
 .wrap{ position: relative; z-index: 2; }
 
 /* Big number “landing” overlay */
