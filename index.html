@@ -1,25 +1,107 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#07060b" />
-  <title>Dark Valentine Quest</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>The Enchanted Quest</title>
+  <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
-  <div class="bg" aria-hidden="true"></div>
+  <div id="bg">
+    <canvas id="fire"></canvas>
+  </div>
 
-  <!-- Fullscreen 3D dice canvas sits behind UI -->
-  <div id="dice3dLayer" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand__title">The Enchanted Quest</div>
+      <div class="brand__subtitle">A dark-fantasy game of clues, devotion, and choice</div>
+    </div>
+    <div class="topbar__actions">
+      <button id="btnHint" class="btn btn--ghost" type="button" title="Hint (with a price)">Hint</button>
+      <button id="btnReset" class="btn btn--ghost" type="button" title="Reset progress">Reset</button>
+    </div>
+  </header>
 
-  <main class="wrap" id="appRoot">
-    <section class="card" id="ui"></section>
+  <main class="layout">
+    <section class="panel panel--chapters">
+      <div class="panel__title">Chapters</div>
+      <div id="chapters" class="chapters"></div>
+      <div class="panel__footer">
+        <div class="tiny">Progress is saved locally on this device.</div>
+      </div>
+    </section>
+
+    <section class="panel panel--content">
+      <div id="crumb" class="crumb"></div>
+
+      <article class="card">
+        <div class="card__header">
+          <div class="card__kicker" id="chapterTitle"></div>
+          <h1 class="card__title" id="levelTitle"></h1>
+        </div>
+
+        <div class="card__body">
+          <div class="block">
+            <div class="label">Direction</div>
+            <div class="text" id="chapterDirection"></div>
+          </div>
+
+          
+
+          <div class="block">
+            <div class="label">Action</div>
+            <div class="text" id="action"></div>
+          </div>
+
+          <div class="block">
+            <div class="label">Direction (Level)</div>
+            <div class="text" id="direction"></div>
+          </div>
+
+          <div id="mechanics" class="mechanics"></div>
+        </div>
+
+        <div class="card__footer">
+          <button id="btnPrev" class="btn btn--ghost" type="button">Back</button>
+          <div class="spacer"></div>
+          <button id="btnComplete" class="btn" type="button">Mark level complete</button>
+          <button id="btnNext" class="btn btn--primary" type="button">Next</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel panel--dice">
+      <div class="panel__title">Dice</div>
+
+      <div class="diceWrap">
+        <div class="diceStage" aria-label="D20 dice roll visualization">
+          <canvas id="diceCanvas"></canvas>
+          <div id="diceResult" class="diceResult">—</div>
+        </div>
+
+        <button id="btnRoll" class="btn btn--primary btn--wide" type="button">Roll d20</button>
+
+        <div class="diceMeta">
+          <div class="metaRow"><span>Last roll</span><span id="lastRoll">—</span></div>
+          <div class="metaRow"><span>Mode</span><span id="rollMode">Normal</span></div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <audio id="clack" preload="auto" src="clack.mp3"></audio>
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop" data-close="1"></div>
+    <div class="modal__sheet" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal__head">
+        <div id="modalTitle" class="modal__title"></div>
+        <button class="iconBtn" type="button" data-close="1" aria-label="Close">✕</button>
+      </div>
+      <div id="modalBody" class="modal__body"></div>
+      <div id="modalFoot" class="modal__foot"></div>
+    </div>
+  </div>
 
-  <!-- Three.js (CDN) -->
+  <script id="GAME_DATA" type="application/json">{"title": "The Enchanted Quest", "subtitle": "A dark-fantasy game of clues, devotion, and choice", "chapters": [{"id": "ch1", "title": "Chapter 1 – The Hallway of Beginnings", "direction": "Enter the threshold where the game awakens. The floor is overtaken by an army of balloons, shimmering with promise and chaos. Somewhere among them lies the key to progression. The air feels playful, deceptive, and alive.", "levels": [{"id": "ch1l1", "title": "Level 1", "item": "Confetti balloons", "action": "You must descend into the pit of color and noise. Among the many false hopes, only one clue is true. Pop, search, and listen closely—luck alone will not save you here.", "direction": "The answer reveals itself only to those willing to make a mess.", "mechanics": {"type": "clue", "note": "Hide the clue in the chosen balloon."}}, {"id": "ch1l2", "title": "Level 2", "item": "Collar", "action": "This sigil must be worn until the magical word is fully revealed. The word is fragmented, scattered, and incomplete—each piece hidden, each letter earned. Guessing is allowed, but certainty is required.", "direction": "On the confetti-covered floor, the next fragment waits patiently to be discovered.", "mechanics": {"type": "word_hunt", "word": "PINEAPPLE", "lettersFound": []}}]}, {"id": "ch2", "title": "Chapter 2 – The Office of Knowledge and Memory", "direction": "Proceed to the place where thoughts are stored, plans are made, and secrets quietly accumulate. Knowledge here has weight—and consequences.", "levels": [{"id": "ch2l1", "title": "Level 1", "item": "Cards of positions", "action": "Fate is summoned through the roll of the dice. One card is drawn and sealed by chance, to be executed on the first available night when the stars align.", "direction": "Seek out the tiny keeper of the darkest desires; it guards what comes next.", "mechanics": {"type": "dice_draw", "deck": "positions"}}, {"id": "ch2l2", "title": "Level 2", "item": "Envelope", "action": "Within this chamber, your next assignment awaits. It is softer than it appears, yet far more revealing.", "direction": "Open the envelope and list your top five moments you have loved since we met. Choose carefully—memory is a powerful offering.", "mechanics": {"type": "prompt", "input": "Top five moments"}}, {"id": "ch2l3", "title": "Level 3", "item": "Riddle (presented by the game itself)", "action": "Solve the riddle to prove you have been paying attention all along.", "direction": "Your next clue is hidden in the depths of knowledge, among words, memories, and shared laughter.", "answer": "You’re goofy and sweet.", "mechanics": {"type": "riddle", "solution": "you’re goofy and sweet.", "image": "riddle-card.png", "caption": "The riddle reveals itself in ink and charm."}}]}, {"id": "ch3", "title": "Chapter 3 – The Kitchen of Temptation", "direction": "Proceed to the place of sustenance, where comfort and danger often share the same plate.", "levels": [{"id": "ch3l1", "title": "Level 1", "item": "Blindfold", "action": "The unexpected will be offered. Identify it correctly and you will be rewarded with a treat—and the right to continue. Fail, and the moment lingers longer than intended.", "direction": "Choose a favorite drink we’ve shared before. Nostalgia sharpens the senses.", "mechanics": {"type": "choice", "prompt": "Pick a favorite drink we’ve had together."}}, {"id": "ch3l2", "title": "Level 2", "item": "The Mystery Box", "action": "On the floor rests a sealed box, silent and unreadable. You must declare what you believe lies inside before it is opened.", "direction": "If your guess is correct, you may choose where the wrath of the gods should land—select the item and its duration, bound only by the length of the game itself. If your guess is incorrect, a chastity device is placed and remains until you are formally released. Time, here, bends to my will.", "mechanics": {"type": "guess", "answerHint": "Rattan whip"}}, {"id": "ch3l3", "title": "Level 3", "item": "A Hidden Poem", "action": "You must compose a short poem of your own. It may be clumsy or clever, serious or shameless — but it must be sincere. Four lines minimum. No escaping vulnerability here.", "direction": "Behind our favorite cozy place — where warmth lingers and bodies naturally lean closer — a hidden message waits for the brave.", "mechanics": {"type": "prompt", "input": "Write a 4+ line poem"}}, {"id": "ch3l4", "title": "Level 4", "item": "Bedroom Command Card", "action": "Fate is summoned once more. Roll the dice. A command is drawn and bound to be executed at the earliest possible moment the opportunity presents itself. There are no rerolls. Destiny does not negotiate.", "direction": "Somewhere near the place where sound fills the room and rhythms take over, an object of special power lies in waiting.", "mechanics": {"type": "dice_draw", "deck": "bedroom_commands"}}]}, {"id": "ch4", "title": "Chapter 4 – The Bedroom of Becoming", "direction": "Enter the chamber where the air grows heavier, slower, more deliberate. Here, the game sheds its disguise. What remains is intention.", "levels": [{"id": "ch4l1", "title": "Level 1", "item": "Redemption Coupons", "action": "Before you rests a collection of promises. Each may be redeemed on a night of your choosing. Select carefully. Some pleasures are immediate. Others are worth the anticipation.", "direction": "On your nightstand lies a small stack of magic — quiet now, but powerful in patience.", "mechanics": {"type": "redeemables", "count": 8}}, {"id": "ch4l2", "title": "Level 2", "item": "The Mold of Memory", "action": "Within a shimmering bag lies a task both playful and permanent. You must complete every step with care and precision. The mold must be filled. The future must be sealed. This is not only preparation — it is preservation.", "direction": "Handle what you create with reverence. It will outlast this evening.", "mechanics": {"type": "checklist", "steps": ["Prep materials", "Mix", "Pour", "Set timer", "Seal & store"]}}, {"id": "ch4l3", "title": "Level 3", "item": "None. Only what has already been earned.", "action": "Stand at the center of the bed. All items used throughout the game must be gathered and placed around you — the blindfold, the dice, the cards, the coupons, the mystery box, the mold, every symbol of the journey. You are surrounded by every trial you have completed.\n\nNow comes the physical vow.\n\nYou must choose a position — kneeling, standing, or seated upright. Once chosen, you may not move. No shifting. No adjusting. No breaking posture.\n\nYou will remain perfectly still for two full minutes while I walk around you, rearranging the objects as I see fit. Silence is required.\n\nIf you break stillness, one item of my choosing becomes automatically active.\n\nIf you hold your position until the end, you may choose three items by intention — not by dice — to remain active for the rest of the night. The rest are dismissed.", "direction": "Where the magic lingers strongest, you will gather what you have earned. The game does not end here — it condenses. It becomes deliberate.", "mechanics": {"type": "convergence", "stillnessSeconds": 120, "chooseCount": 3}}]}], "decks": {"positions": ["The Oath — one person leads, the other follows, slowly.", "The Mirror — copy exactly what is asked, with a grin.", "The Throne — sit, wait, and accept the next instruction.", "The Whisper — only quiet voices; intensity stays.", "The Hunt — seek the next touch, but ask permission first."], "bedroom_commands": ["Freeze for 30 seconds, eyes locked. No movement.", "A single kiss, chosen by the dice. Make it count.", "Three deep breaths together. Then silence.", "Trade one truth each. No jokes. Only honesty.", "Choose: blindfold or hands behind back — for one minute."]}}</script>
   <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
   <script src="app.js"></script>
 </body>
