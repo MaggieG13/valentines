@@ -1,737 +1,322 @@
-/* ===============================
-   CONFIG — EDIT THESE
-================================ */
 
-const ROOMS = {
-  "The Great Hall of Indulgence": {
-    actions: [
-      { id:"gh_a1", title:"Action — Inventory of Desire", text:"Find the items hidden in this chamber. Choose the one that calls to you most, and tell me why." },
-      { id:"gh_a2", title:"Action — Offering", text:"Select one item and place it somewhere visible. Leave it there." },
-      { id:"gh_a3", title:"Action — Confession", text:"Tell me one thing you enjoy but don’t often admit." }
-    ],
-    rewards: {
-      small:{ title:"Room Cleared", text:"The hall hums softly. You may proceed." },
-      big:{ title:"Critical Success", text:"The hall approves. A stronger desire awakens." },
-      nat20:{ title:"NAT 20 — Favor of Indulgence", text:"Reality bends. The ritual deepens." }
-    },
-    paidHint: "Look where items are usually kept nearby. Don’t overthink it."
-  },
+:root{
+  --bg:#0b0612;
+  --panel:#120a1fdd;
+  --card:#140b23f2;
+  --ink:#f2eefe;
+  --muted:#b9a8d6;
+  --muted2:#8e7bb5;
+  --line:#2a1744;
+  --accent:#b78cff;
+  --accent2:#6d2cff;
+  --good:#9dffa9;
+  --warn:#ffd68c;
+  --bad:#ff8c8c;
+  --shadow: 0 18px 60px rgba(0,0,0,.55);
+  --radius: 18px;
+}
 
-  "The Passage of Submission": {
-    actions: [
-      { id:"ps_a1", title:"Action — Oath", text:"Speak a single sentence committing yourself to this night." },
-      { id:"ps_a2", title:"Action — Stillness", text:"Hold still for ten slow breaths. No fidgeting." },
-      { id:"ps_a3", title:"Action — Token", text:"Bring an object from another room and place it here." }
-    ],
-    rewards: {
-      small:{ title:"Room Cleared", text:"The passage opens further." },
-      big:{ title:"Critical Success", text:"The walls whisper approval." },
-      nat20:{ title:"NAT 20 — Chosen Path", text:"A secret route reveals itself where none existed." }
-    },
-    paidHint: "Stand at the entrance and scan left-to-right; the clue is meant to be noticed fast."
-  },
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background: radial-gradient(1200px 700px at 50% -10%, #2a0b44 0%, rgba(42,11,68,0) 60%) , var(--bg);
+  color:var(--ink);
+  font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  overflow:hidden;
+}
 
-  "The Royal Chamber": {
-    actions: [
-      { id:"rc_a1", title:"Action — Claim", text:"Stand or sit where you feel most powerful. Hold it." },
-      { id:"rc_a2", title:"Action — Command", text:"Say one clear instruction for what you want later." },
-      { id:"rc_a3", title:"Action — Confession", text:"Tell me what makes you feel most desired." }
-    ],
-    rewards: {
-      small:{ title:"Room Cleared", text:"The chamber yields." },
-      big:{ title:"Critical Success", text:"The chamber offers more." },
-      nat20:{ title:"NAT 20 — Crowned", text:"The throne recognizes you." }
-    },
-    paidHint: "Focus on the place you naturally reach for first in that room."
-  },
+#bg{
+  position:fixed; inset:0;
+  z-index:-1;
+}
+#fire{
+  width:100%; height:100%;
+  display:block;
+  opacity:.9;
+  filter: blur(.2px) saturate(1.15);
+}
 
-  "The Secret Chamber": {
-    actions: [
-      { id:"sc_a1", title:"Action — Discovery", text:"Find something hidden in this room and bring it out." },
-      { id:"sc_a2", title:"Action — Choice", text:"Choose one item you will use later and set it aside." },
-      { id:"sc_a3", title:"Action — Whisper", text:"Tell me what excites you about secrets." }
-    ],
-    rewards: {
-      small:{ title:"Room Cleared", text:"The secret is acknowledged." },
-      big:{ title:"Critical Success", text:"A deeper secret stirs." },
-      nat20:{ title:"NAT 20 — Beyond the Veil", text:"The hidden reveals itself willingly." }
-    },
-    paidHint: "Check the most ‘private’ storage spot in that room."
-  },
+.topbar{
+  position:fixed;
+  top:0; left:0; right:0;
+  padding: 14px 16px env(safe-area-inset-top);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  backdrop-filter: blur(10px);
+  background: linear-gradient(to bottom, rgba(10,4,18,.78), rgba(10,4,18,.35));
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
 
-  "The Sanctum of Purification": {
-    actions: [
-      { id:"sp_a1", title:"Action — Preparation", text:"Wash your hands slowly and deliberately." },
-      { id:"sp_a2", title:"Action — Ritual", text:"Dry your hands. Breathe once, fully." },
-      { id:"sp_a3", title:"Action — Mark", text:"Look at yourself briefly and acknowledge what you see." }
-    ],
-    rewards: {
-      small:{ title:"Room Cleared", text:"You are prepared." },
-      big:{ title:"Critical Success", text:"You are more than prepared." },
-      nat20:{ title:"NAT 20 — Transcendence", text:"The rite exceeds its limit." }
-    },
-    paidHint: "The clue is near where you start your routine."
+.brand__title{
+  font-weight:800;
+  letter-spacing:.2px;
+}
+.brand__subtitle{
+  color:var(--muted);
+  font-size:12.5px;
+}
+
+.topbar__actions{display:flex; gap:10px;}
+
+.layout{
+  position:fixed;
+  inset: 62px 0 0 0;
+  padding: 14px 14px env(safe-area-inset-bottom);
+  display:grid;
+  grid-template-columns: 320px 1fr 320px;
+  gap:14px;
+  height: calc(100% - 62px);
+}
+
+.panel{
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow:hidden;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+
+.panel__title{
+  padding: 12px 14px;
+  font-weight:700;
+  color:var(--muted);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.panel__footer{
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  color:var(--muted2);
+  font-size:12px;
+}
+
+.panel--chapters .chapters{
+  padding: 10px;
+  overflow:auto;
+}
+
+.chapterBtn{
+  width:100%;
+  text-align:left;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.18);
+  color:var(--ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  cursor:pointer;
+  transition: transform .08s ease, border-color .15s ease, background .15s ease;
+}
+.chapterBtn:hover{transform: translateY(-1px); border-color: rgba(183,140,255,.35);}
+.chapterBtn__title{font-weight:800; margin-bottom:4px;}
+.chapterBtn__dir{color:var(--muted); font-size:12.5px;}
+.chapterBtn__meta{display:flex; justify-content:space-between; margin-top:8px; color:var(--muted2); font-size:12px;}
+.pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(0,0,0,.16);
+}
+
+.panel--content{overflow:auto;}
+.crumb{
+  padding: 10px 12px 0 12px;
+  color:var(--muted2);
+  font-size:12px;
+}
+.card{
+  margin: 10px 12px 12px 12px;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,.07);
+  box-shadow: var(--shadow);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  min-height: calc(100% - 28px);
+}
+.card__header{
+  padding: 16px 16px 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.card__kicker{
+  color:var(--muted);
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:.2px;
+  margin-bottom:6px;
+}
+.card__title{
+  margin:0;
+  font-size: 22px;
+  line-height:1.15;
+}
+.card__body{
+  padding: 14px 16px;
+  overflow:auto;
+}
+.block{margin-bottom: 14px;}
+.label{
+  font-weight:800;
+  color:var(--muted);
+  font-size:12.5px;
+  letter-spacing:.2px;
+  margin-bottom:6px;
+}
+.text{white-space:pre-wrap;}
+.mechanics{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.mCard{
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.18);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.mTitle{font-weight:800; margin-bottom:8px;}
+.mSub{color:var(--muted); font-size:12.5px; margin-bottom:10px;}
+.row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+input[type="text"], textarea, select{
+  width:100%;
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.10);
+  color:var(--ink);
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline:none;
+}
+textarea{min-height:100px; resize:vertical;}
+
+.card__footer{
+  padding: 12px 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.spacer{flex:1;}
+
+.btn{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  color:var(--ink);
+  padding: 10px 12px;
+  border-radius: 14px;
+  cursor:pointer;
+  font-weight:800;
+}
+.btn:hover{border-color: rgba(183,140,255,.35);}
+.btn--primary{
+  background: linear-gradient(135deg, rgba(183,140,255,.95), rgba(109,44,255,.95));
+  border-color: rgba(183,140,255,.6);
+  color:#12091f;
+}
+.btn--ghost{
+  background: rgba(0,0,0,.10);
+}
+.btn--wide{width:100%;}
+
+.panel--dice .diceWrap{
+  padding: 12px;
+  overflow:auto;
+}
+.diceStage{
+  position:relative;
+  width:100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: radial-gradient(400px 240px at 50% 20%, rgba(183,140,255,.16), rgba(0,0,0,.18));
+  overflow:hidden;
+  margin-bottom: 10px;
+}
+#diceCanvas{
+  width:100%;
+  height:100%;
+  display:block;
+}
+.diceResult{
+  position:absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.10);
+  font-weight:900;
+  color: var(--ink);
+}
+.diceMeta{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:12.5px;
+}
+.metaRow{display:flex; justify-content:space-between; padding: 6px 2px; border-bottom: 1px dashed rgba(255,255,255,.10);}
+.metaRow:last-child{border-bottom:none;}
+.tiny{opacity:.9}
+
+.modal{
+  position:fixed; inset:0;
+  display:none;
+  z-index:50;
+}
+.modal[aria-hidden="false"]{display:block;}
+.modal__backdrop{
+  position:absolute; inset:0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(6px);
+}
+.modal__sheet{
+  position:absolute;
+  left:50%; top:50%;
+  transform: translate(-50%,-50%);
+  width:min(560px, calc(100% - 24px));
+  max-height: min(76vh, 720px);
+  overflow:hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(16,8,28,.95);
+  box-shadow: var(--shadow);
+  display:flex;
+  flex-direction:column;
+}
+.modal__head{
+  padding: 12px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.modal__title{font-weight:900;}
+.iconBtn{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  color:var(--ink);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor:pointer;
+}
+.modal__body{padding: 12px 14px; overflow:auto;}
+.modal__foot{padding: 12px 14px; border-top: 1px solid rgba(255,255,255,.07); display:flex; gap:10px; justify-content:flex-end; align-items:center;}
+
+@media (max-width: 1050px){
+  body{overflow:auto;}
+  .layout{
+    position:static;
+    inset:auto;
+    height:auto;
+    grid-template-columns: 1fr;
   }
-};
-
-const ROUTE = [
-  "The Great Hall of Indulgence",
-  "The Passage of Submission",
-  "The Royal Chamber",
-  "The Sanctum of Purification",
-  "The Secret Chamber"
-];
-
-function directionText(roomName, tier) {
-  if (tier === "low")  return "The air turns thick with omen. Seek the chamber by instinct.";
-  if (tier === "mid")  return `Go to ${roomName}. Watch what your eyes skip.`;
-  return `${roomName}. Go there now — without hesitation.`;
+  .panel{min-height: 260px;}
+  .panel--dice .diceStage{max-width: 520px; margin: 0 auto 10px auto;}
 }
-
-const SHAKE_THRESHOLD = 18;
-const SHAKE_COOLDOWN_MS = 900;
-
-const STORAGE_KEY = "dark_valentine_v3_three";
-
-const STARTING_OBOLS = 3;
-const HINT_COST = 1;
-
-/* ===============================
-   ENGINE STATE / HELPERS
-================================ */
-
-const ui = document.getElementById("ui");
-const diceOverlay = document.createElement("div");
-diceOverlay.className = "diceResultOverlay";
-diceOverlay.setAttribute("aria-hidden", "true");
-document.body.appendChild(diceOverlay);
-
-/* --- Sound --- */
-const clackEl = document.getElementById("clack");
-let audioUnlocked = false;
-
-function unlockAudioOnce(){
-  if (audioUnlocked) return;
-  if (!clackEl) { audioUnlocked = true; return; }
-
-  clackEl.volume = 0.85;
-  clackEl.currentTime = 0;
-
-  const p = clackEl.play();
-  if (p && typeof p.then === "function") {
-    p.then(() => {
-      clackEl.pause();
-      clackEl.currentTime = 0;
-      audioUnlocked = true;
-    }).catch(() => { audioUnlocked = false; });
-  } else {
-    audioUnlocked = true;
-  }
-}
-
-function playClack(){
-  if (!clackEl) return;
-  try {
-    clackEl.currentTime = 0;
-    clackEl.play().catch(()=>{});
-  } catch {}
-}
-
-let state = safeLoad() ?? {
-  stepIndex: 0,
-  lastRoll: null,
-  armed: false,
-  completed: [],
-  obols: STARTING_OBOLS,
-  paidHintUsedAtStep: {}
-};
-
-function safeLoad(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } }
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-
-function clarityTier(r){ if (r <= 7) return "low"; if (r <= 14) return "mid"; return "high"; }
-function rewardTierFromRoll(r){ if (r === 20) return "nat20"; return r >= 15 ? "big" : "small"; }
-function nextRoomName(){ return ROUTE[state.stepIndex % ROUTE.length]; }
-
-function pickNextAction(roomName){
-  const room = ROOMS[roomName];
-  if (!room) return null;
-  return room.actions.find(a => !state.completed.includes(a.id)) ?? null;
-}
-function roomCleared(roomName){
-  const room = ROOMS[roomName];
-  if (!room) return false;
-  return room.actions.every(a => state.completed.includes(a.id));
-}
-
-function rollD20(){
-  const a = new Uint32Array(1);
-  crypto.getRandomValues(a);
-  return (a[0] % 20) + 1;
-}
-
-async function requestMotionPermission(){
-  if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
-    return DeviceMotionEvent.requestPermission();
-  }
-  return "granted";
-}
-
-async function tryFullscreen(){
-  const el = document.documentElement;
-  const fn = el.requestFullscreen || el.webkitRequestFullscreen;
-  try { if (fn) await fn.call(el); } catch {}
-}
-
-/* ----- Shake listener ----- */
-let shakeListenerInstalled = false;
-let lastShakeAt = 0;
-
-function installShakeListener(onShake){
-  if (shakeListenerInstalled) return;
-  shakeListenerInstalled = true;
-
-  window.addEventListener("devicemotion", (e) => {
-    const now = Date.now();
-    if (now - lastShakeAt < SHAKE_COOLDOWN_MS) return;
-
-    const acc = e.accelerationIncludingGravity;
-    if (!acc) return;
-
-    const x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
-    const magnitude = Math.sqrt(x*x + y*y + z*z);
-
-    if (magnitude > SHAKE_THRESHOLD) {
-      lastShakeAt = now;
-      onShake();
-    }
-  }, { passive: true });
-}
-
-/* ===============================
-   3D DICE (Three.js)
-   - A real 3D d20 mesh
-   - It tumbles + moves across the screen
-   - Then “lands” and reveals the correct number as an overlay
-================================ */
-
-let three = null;
-
-function initThreeDice(){
-  if (three) return;
-
-  const layer = document.getElementById("dice3dLayer");
-  if (!layer || !window.THREE) return;
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearAlpha(0);
-  layer.appendChild(renderer.domElement);
-
-  const scene = new THREE.Scene();
-
-  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50);
-  camera.position.set(0, 0.6, 6.8);
-
-  // Lights (gothic purple)
-  const key = new THREE.DirectionalLight(0xe6d7ff, 1.1);
-  key.position.set(3, 4, 5);
-  scene.add(key);
-
-  const fill = new THREE.DirectionalLight(0xff77cc, 0.45);
-  fill.position.set(-4, 2, 3);
-  scene.add(fill);
-
-  const rim = new THREE.PointLight(0x9a6dff, 1.2, 30);
-  rim.position.set(0, -2, 2);
-  scene.add(rim);
-
-  // D20 geometry (icosahedron)
-  const geometry = new THREE.IcosahedronGeometry(0.95, 0);
-
-  // Neon purple + black material
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x0b0612,
-    metalness: 0.6,
-    roughness: 0.18,
-    emissive: 0x5b1cff,
-    emissiveIntensity: 1.25
-  });
-
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(0, 0, 0);
-  scene.add(mesh);
-
-  // Neon wireframe shell for glow edges
-  const wire = new THREE.Mesh(
-    geometry,
-    new THREE.MeshBasicMaterial({
-      color: 0xb388ff,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.65
-    })
-  );
-  wire.scale.set(1.02, 1.02, 1.02);
-  mesh.add(wire);
-
-  // Liquid core inside the dice
-  const liquidGeo = new THREE.SphereGeometry(0.75, 32, 32);
-  const liquidMat = new THREE.MeshStandardMaterial({
-    color: 0x2f0a5e,
-    emissive: 0x7a2dff,
-    emissiveIntensity: 0.75,
-    transparent: true,
-    opacity: 0.38,
-    roughness: 0.25
-  });
-  const liquid = new THREE.Mesh(liquidGeo, liquidMat);
-  liquid.position.set(0, -0.05, 0);
-  mesh.add(liquid);
-
-  const labelCanvas = document.createElement("canvas");
-  labelCanvas.width = 256;
-  labelCanvas.height = 256;
-  const labelCtx = labelCanvas.getContext("2d");
-  const labelTexture = new THREE.CanvasTexture(labelCanvas);
-  labelTexture.minFilter = THREE.LinearFilter;
-  labelTexture.magFilter = THREE.LinearFilter;
-
-  const labelMat = new THREE.MeshBasicMaterial({
-    map: labelTexture,
-    transparent: true,
-    depthWrite: false,
-    depthTest: false,
-    side: THREE.DoubleSide
-  });
-  const labelMesh = new THREE.Mesh(new THREE.BufferGeometry(), labelMat);
-  labelMesh.visible = false;
-  mesh.add(labelMesh);
-
-  // A subtle aura plane behind it
-  const auraGeo = new THREE.PlaneGeometry(6, 6);
-  const auraMat = new THREE.MeshBasicMaterial({
-    color: 0x7a3cff,
-    transparent: true,
-    opacity: 0.06
-  });
-  const aura = new THREE.Mesh(auraGeo, auraMat);
-  aura.position.set(0, 0, -3);
-  scene.add(aura);
-
-  let anim = {
-    rolling: false,
-    start: 0,
-    duration: 1350,
-    fromPos: new THREE.Vector3(0, 0, 0),
-    toPos: new THREE.Vector3(0, -0.15, 0),
-    fromQuat: new THREE.Quaternion(),
-    toQuat: new THREE.Quaternion()
-  };
-
-  function onResize(){
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-  }
-  window.addEventListener("resize", onResize);
-
-  function loop(ts){
-    requestAnimationFrame(loop);
-
-    // idle drift
-    if (!anim.rolling) {
-      mesh.rotation.y += 0.003;
-      mesh.rotation.x += 0.0015;
-      aura.rotation.z += 0.0008;
-      liquid.position.y = -0.05 + Math.sin(ts * 0.0012) * 0.05;
-      liquid.rotation.z += 0.003;
-    } else {
-      const t = Math.min(1, (ts - anim.start) / anim.duration);
-      const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2;
-
-      // position lerp (fly then settle)
-      mesh.position.lerpVectors(anim.fromPos, anim.toPos, ease);
-
-      // rotation blend: spin fast then slow down
-      mesh.quaternion.copy(anim.fromQuat).slerp(anim.toQuat, ease);
-
-      liquid.position.y = -0.05 + Math.sin(ts * 0.008) * 0.12 * (1 - t);
-      liquid.position.x = Math.cos(ts * 0.006) * 0.08 * (1 - t);
-      liquid.rotation.x += 0.02;
-
-      if (t >= 1) anim.rolling = false;
-    }
-
-    renderer.render(scene, camera);
-  }
-  requestAnimationFrame(loop);
-
-  function getFaceNormals(){
-    const normals = [];
-    const pos = geometry.attributes.position;
-    const index = geometry.index;
-    if (!index || !pos) return normals;
-
-    const vA = new THREE.Vector3();
-    const vB = new THREE.Vector3();
-    const vC = new THREE.Vector3();
-    const cb = new THREE.Vector3();
-    const ab = new THREE.Vector3();
-
-    for (let i = 0; i < index.count; i += 3) {
-      vA.fromBufferAttribute(pos, index.getX(i));
-      vB.fromBufferAttribute(pos, index.getX(i + 1));
-      vC.fromBufferAttribute(pos, index.getX(i + 2));
-      cb.subVectors(vC, vB);
-      ab.subVectors(vA, vB);
-      cb.cross(ab).normalize();
-      normals.push(cb.clone());
-    }
-    return normals;
-  }
-
-  const faceNormals = getFaceNormals();
-  let hideResultTimer = null;
-  let revealTimer = null;
-
-  function setLabelGeometry(faceIndex){
-    const pos = geometry.attributes.position;
-    const index = geometry.index;
-    if (!index || !pos) return;
-
-    const idx = faceIndex * 3;
-    const i0 = index.getX(idx);
-    const i1 = index.getX(idx + 1);
-    const i2 = index.getX(idx + 2);
-
-    const v0 = new THREE.Vector3().fromBufferAttribute(pos, i0);
-    const v1 = new THREE.Vector3().fromBufferAttribute(pos, i1);
-    const v2 = new THREE.Vector3().fromBufferAttribute(pos, i2);
-
-    const normal = new THREE.Vector3()
-      .subVectors(v1, v0)
-      .cross(new THREE.Vector3().subVectors(v2, v0))
-      .normalize();
-    const offset = normal.clone().multiplyScalar(0.07);
-    v0.add(offset);
-    v1.add(offset);
-    v2.add(offset);
-
-    const positions = new Float32Array([
-      v0.x, v0.y, v0.z,
-      v1.x, v1.y, v1.z,
-      v2.x, v2.y, v2.z
-    ]);
-    const uvs = new Float32Array([
-      0.5, 1,
-      0, 0,
-      1, 0
-    ]);
-
-    const faceGeo = new THREE.BufferGeometry();
-    faceGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    faceGeo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-    faceGeo.computeVertexNormals();
-
-    labelMesh.geometry.dispose();
-    labelMesh.geometry = faceGeo;
-  }
-
-  function updateLabel(result, faceIndex){
-    if (!labelCtx) return;
-    labelCtx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
-    labelCtx.save();
-    labelCtx.beginPath();
-    labelCtx.moveTo(128, 22);
-    labelCtx.lineTo(22, 220);
-    labelCtx.lineTo(234, 220);
-    labelCtx.closePath();
-    labelCtx.clip();
-
-    labelCtx.fillStyle = "rgba(18, 8, 32, 0.82)";
-    labelCtx.beginPath();
-    labelCtx.moveTo(128, 22);
-    labelCtx.lineTo(22, 220);
-    labelCtx.lineTo(234, 220);
-    labelCtx.closePath();
-    labelCtx.fill();
-    labelCtx.strokeStyle = "rgba(230, 210, 255, 0.92)";
-    labelCtx.lineWidth = 5;
-    labelCtx.stroke();
-    labelCtx.fillStyle = "rgba(250, 248, 255, 0.98)";
-    labelCtx.font = "bold 112px ui-serif, Georgia, 'Times New Roman', serif";
-    labelCtx.textAlign = "center";
-    labelCtx.textBaseline = "middle";
-    labelCtx.fillText(String(result), 128, 140);
-    labelCtx.restore();
-    labelTexture.needsUpdate = true;
-
-    setLabelGeometry(faceIndex);
-    labelMesh.visible = true;
-    showResultOverlay(result);
-
-    if (hideResultTimer) clearTimeout(hideResultTimer);
-    hideResultTimer = setTimeout(() => {
-      labelMesh.visible = false;
-      mesh.visible = false;
-      aura.visible = false;
-    }, 3200);
-  }
-
-  function rollAnimation(result){
-    // move across screen: start off to the side, end center-ish
-    anim.rolling = true;
-    anim.start = performance.now();
-    anim.duration = 1500;
-
-    // random start side for variety
-    const side = (Math.random() < 0.5) ? -1 : 1;
-    anim.fromPos = new THREE.Vector3(2.6 * side, 1.4, 0.5);
-    anim.toPos   = new THREE.Vector3(0, 0.5, 0.25);
-
-    anim.fromQuat = mesh.quaternion.clone();
-
-    const faceIndex = (result - 1) % faceNormals.length;
-    const normal = faceNormals[faceIndex] ?? new THREE.Vector3(0, 1, 0);
-    const toCamera = camera.position.clone().sub(mesh.position).normalize();
-    const alignQuat = new THREE.Quaternion().setFromUnitVectors(normal, toCamera);
-    const spin = new THREE.Quaternion().setFromAxisAngle(toCamera, Math.random() * Math.PI * 2);
-    anim.toQuat = spin.multiply(alignQuat);
-
-    if (revealTimer) clearTimeout(revealTimer);
-    if (hideResultTimer) clearTimeout(hideResultTimer);
-    labelMesh.visible = false;
-    mesh.visible = true;
-    aura.visible = true;
-    playClack();
-    revealTimer = setTimeout(() => {
-      updateLabel(result, faceIndex);
-    }, anim.duration);
-  }
-
-  three = { rollAnimation };
-}
-
-function showResultOverlay(result){
-  if (!diceOverlay) return;
-  diceOverlay.textContent = String(result);
-  diceOverlay.classList.add("show");
-  if (showResultOverlay.timer) clearTimeout(showResultOverlay.timer);
-  showResultOverlay.timer = setTimeout(() => {
-    diceOverlay.classList.remove("show");
-  }, 1800);
-}
-
-function rollDiceWith3D(result){
-  initThreeDice();
-  if (three?.rollAnimation) three.rollAnimation(result);
-}
-
-/* ===============================
-   UI SCREENS
-================================ */
-
-function renderHome(){
-  const room = nextRoomName();
-
-  ui.innerHTML = `
-    <h2>Dark Valentine Quest</h2>
-    <p class="muted">Next destination:</p>
-    <p class="room">${escapeHtml(room)}</p>
-
-    <div class="row">
-      <span class="badge mono">Obols: ${state.obols}</span>
-      <span class="badge mono">Hint price: ${HINT_COST}</span>
-      ${audioUnlocked ? `<span class="badge mono">Audio: ON</span>` : `<span class="badge mono">Audio: tap to enable</span>`}
-    </div>
-
-    <div class="spacer"></div>
-
-    <div class="row">
-      <button id="shakeBtn">Roll (shake)</button>
-      <button id="tapBtn" class="secondary">Roll (tap)</button>
-      <button id="fsBtn" class="secondary">Fullscreen</button>
-      <button id="resetBtn" class="danger">Reset</button>
-    </div>
-
-    <div class="spacer"></div>
-    <p class="muted">Tip: the 3D die rolls across the screen and “lands” on the result.</p>
-  `;
-
-  document.getElementById("fsBtn").onclick = () => {
-    unlockAudioOnce();
-    tryFullscreen();
-  };
-
-  document.getElementById("shakeBtn").onclick = async () => {
-    unlockAudioOnce();
-    initThreeDice();
-
-    const perm = await requestMotionPermission();
-    if (perm !== "granted") {
-      ui.insertAdjacentHTML("beforeend", `<div class="hr"></div><p style="color: rgba(255,130,130,0.92);">Motion permission denied. Use “Roll (tap)”.</p>`);
-      return;
-    }
-
-    state.armed = true;
-    save();
-
-    installShakeListener(() => {
-      if (!state.armed) return;
-      const r = rollD20();
-      state.lastRoll = r;
-      state.armed = false;
-      save();
-
-      rollDiceWith3D(r);
-      setTimeout(renderDirection, 1050);
-    });
-
-    ui.insertAdjacentHTML("beforeend", `<div class="hr"></div><p class="mono">Armed. Shake to roll…</p>`);
-  };
-
-  document.getElementById("tapBtn").onclick = () => {
-    unlockAudioOnce();
-    initThreeDice();
-    const r = rollD20();
-    state.lastRoll = r;
-    save();
-
-    rollDiceWith3D(r);
-    setTimeout(renderDirection, 1050);
-  };
-
-  document.getElementById("resetBtn").onclick = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    location.reload();
-  };
-}
-
-function renderDirection(){
-  const room = nextRoomName();
-  const roll = state.lastRoll ?? 1;
-  const tier = clarityTier(roll);
-
-  const text = directionText(room, tier);
-  const paidUsed = !!state.paidHintUsedAtStep[state.stepIndex];
-  const canBuyHint = !paidUsed && state.obols >= HINT_COST;
-  const paidHintText = ROOMS[room]?.paidHint ?? "The dungeon offers nothing more.";
-
-  ui.innerHTML = `
-    <h3>Direction</h3>
-    <p class="clarity-${tier}">${escapeHtml(text)}</p>
-
-    <div class="row">
-      <span class="badge mono">d20: ${roll}</span>
-      <span class="badge mono">clarity: ${tier.toUpperCase()}</span>
-      <span class="badge mono">Obols: ${state.obols}</span>
-    </div>
-
-    <div class="spacer"></div>
-
-    <div class="row">
-      <button id="thereBtn">I’m there</button>
-      <button id="rerollBtn" class="secondary">Re-roll</button>
-      <button id="hintBtn" class="secondary" ${canBuyHint ? "" : "disabled"}>
-        Pay the price (-${HINT_COST})
-      </button>
-    </div>
-
-    ${paidUsed ? `
-      <div class="hr"></div>
-      <p class="muted"><span class="mono">Price paid.</span> ${escapeHtml(paidHintText)}</p>
-    ` : ""}
-  `;
-
-  document.getElementById("thereBtn").onclick = () => renderAction();
-
-  document.getElementById("rerollBtn").onclick = () => {
-    state.lastRoll = null;
-    save();
-    renderHome();
-  };
-
-  document.getElementById("hintBtn").onclick = () => {
-    if (!canBuyHint) return;
-    unlockAudioOnce();
-    playClack();
-    state.obols -= HINT_COST;
-    state.paidHintUsedAtStep[state.stepIndex] = true;
-    save();
-    renderDirection();
-  };
-}
-
-function renderAction(){
-  const room = nextRoomName();
-  const action = pickNextAction(room);
-
-  if (!action) return renderReward(room);
-
-  ui.innerHTML = `
-    <h3>${escapeHtml(action.title)}</h3>
-    <p class="muted">Chamber:</p>
-    <p class="room">${escapeHtml(room)}</p>
-    <p>${escapeHtml(action.text)}</p>
-
-    <div class="row">
-      <button id="doneBtn">Done</button>
-      <button id="backBtn" class="secondary">Back</button>
-    </div>
-  `;
-
-  document.getElementById("doneBtn").onclick = () => {
-    unlockAudioOnce();
-    playClack();
-    if (!state.completed.includes(action.id)) state.completed.push(action.id);
-    save();
-
-    if (roomCleared(room)) renderReward(room);
-    else advance();
-  };
-
-  document.getElementById("backBtn").onclick = () => renderDirection();
-}
-
-function renderReward(room){
-  const roll = state.lastRoll ?? 1;
-  const tier = rewardTierFromRoll(roll);
-  const reward = ROOMS[room]?.rewards?.[tier] ?? { title: "Reward", text: "A reward is granted." };
-
-  ui.innerHTML = `
-    <h2>${escapeHtml(reward.title)}</h2>
-    <p class="muted">Room cleared:</p>
-    <p class="room">${escapeHtml(room)}</p>
-    <p>${escapeHtml(reward.text)}</p>
-    <div class="row">
-      <button id="contBtn">Continue</button>
-    </div>
-  `;
-
-  document.getElementById("contBtn").onclick = () => {
-    unlockAudioOnce();
-    playClack();
-    advance();
-  };
-}
-
-function advance(){
-  state.stepIndex += 1;
-  state.lastRoll = null;
-  save();
-  renderHome();
-}
-
-function escapeHtml(s){
-  return String(s)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
-/* Boot */
-renderHome();
