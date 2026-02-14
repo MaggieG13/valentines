@@ -30,35 +30,88 @@ const $$ = (sel, el=document) => [...el.querySelectorAll(sel)];
 
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
-function veilText(txt){
+function hashSeed(str){
+  // simple deterministic hash to seed a PRNG
+  let h = 2166136261;
+  for(let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0);
+}
+function seededRand(seed){
+  // xorshift32
+  let x = seed || 123456789;
+  return function(){
+    x ^= x << 13; x >>>= 0;
+    x ^= x >> 17; x >>>= 0;
+    x ^= x << 5;  x >>>= 0;
+    return (x >>> 0) / 4294967296;
+  };
+}
+
+function revealByRoll(txt, roll, levelId){
   const s = String(txt || "");
   if(!s.trim()) return "—";
-  // Replace ~35% of letters with a veil glyph to keep shape but hide clarity.
-  let out = "";
-  for(let i=0;i<s.length;i++){
-    const ch = s[i];
-    if(/[A-Za-zÀ-ž0-9]/.test(ch) && Math.random() < 0.35){
-      out += "•";
-    }else{
-      out += ch;
-    }
+  if(!roll) return "Roll the d20 to sharpen the words.\n\n" + maskWords(s, 0.15, levelId, 0);
+  if(roll > 16) return s;
+  if(roll >= 7) return maskWords(s, 0.55, levelId, roll);
+  return maskWords(s, 0.22, levelId, roll);
+}
+
+function maskWords(txt, keepRatio, levelId, roll){
+  // Keep a % of words visible; mask the rest with veil glyphs, preserving punctuation & spacing.
+  const seed = hashSeed((levelId||"lvl") + "|" + String(roll));
+  const rnd = seededRand(seed);
+
+  // Split into tokens: words vs whitespace vs punctuation
+  const tokens = [];
+  const reTok = /([A-Za-zÀ-ž0-9’']+)|(\s+)|([^A-Za-zÀ-ž0-9’'\s]+)/g;
+  let m;
+  while((m = reTok.exec(txt)) !== null){
+    tokens.push({ word: m[1] || null, ws: m[2] || null, punc: m[3] || null });
   }
-  return out;
+
+  const wordIdx = tokens.map((t,i)=>t.word?i:-1).filter(i=>i>=0);
+  const n = wordIdx.length;
+  const keepN = Math.max( Math.floor(n * keepRatio), Math.min(3, n) ); // keep at least a few if possible
+
+  // pick which words to keep (deterministic)
+  const picks = new Set();
+  while(picks.size < keepN && picks.size < n){
+    const j = Math.floor(rnd() * n);
+    picks.add(wordIdx[j]);
+  }
+
+  return tokens.map((t,i)=>{
+    if(t.ws) return t.ws;
+    if(t.punc) return t.punc;
+    if(t.word){
+      if(picks.has(i)) return t.word;
+      // mask word with dots roughly matching length
+      const len = t.word.length;
+      if(len <= 2) return "•".repeat(len);
+      return "•".repeat(Math.min(len, 8));
+    }
+    return "";
+  }).join("");
 }
 
-function isRevealedFor(levelId){
-  return state.reveal.levelId === levelId && state.reveal.unlocked === true;
+// Reveal state: directions clarity resets when you switch levels.
+function ensureRevealState(levelId){
+  if(state.reveal.levelId !== levelId){
+    state.reveal.levelId = levelId;
+    state.reveal.unlocked = false;
+  }
 }
-
-function lockRevealFor(levelId){
-  state.reveal.levelId = levelId;
-  state.reveal.unlocked = false;
-}
-
 function unlockRevealFor(levelId){
   state.reveal.levelId = levelId;
   state.reveal.unlocked = true;
 }
+function isRevealedFor(levelId){
+  return state.reveal.levelId === levelId && state.reveal.unlocked === true;
+}
+
 
 function loadProgress(){
   try{
@@ -132,14 +185,14 @@ function renderLevel(){
   const lvl = getLevel(state.chapterIndex, state.levelIndex);
 
   // Each turn requires a fresh roll to sharpen the directions.
-  lockRevealFor(lvl.id);
+  ensureRevealState(lvl.id);
 
   $("#crumb").textContent = `${state.chapterIndex+1}/${GAME.chapters.length} • ${state.levelIndex+1}/${ch.levels.length}`;
   $("#chapterTitle").textContent = ch.title;
   $("#levelTitle").textContent = lvl.title;
-  $("#chapterDirection").textContent = isRevealedFor(lvl.id) ? ch.direction : ("The path is blurred. Roll the d20 to sharpen the words.\n\n" + veilText(ch.direction));
+  $("#chapterDirection").textContent = isRevealedFor(lvl.id) ? revealByRoll(ch.direction, state.lastRoll, lvl.id) : revealByRoll(ch.direction, null, lvl.id);
   $("#action").textContent = lvl.action || "—";
-  $("#direction").textContent = isRevealedFor(lvl.id) ? (lvl.direction || "—") : ("Roll to reveal the true direction.\n\n" + veilText(lvl.direction || "—"));
+  $("#direction").textContent = isRevealedFor(lvl.id) ? revealByRoll((lvl.direction || "—"), state.lastRoll, lvl.id) : revealByRoll((lvl.direction || "—"), null, lvl.id);
 
   $("#btnPrev").disabled = (state.chapterIndex===0 && state.levelIndex===0);
   $("#btnNext").disabled = !revealed;
@@ -307,7 +360,8 @@ function renderMechanics(level){
   
   if(m.type === "riddle"){
     const wrap = document.createElement("div");
-    const img = m.image ? `<img src="${m.image}" alt="Riddle image" style="width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.10);margin:10px 0;display:block;">` : "";
+    const src = m.imageData || m.image || "";
+    const img = src ? `<img src="${src}" alt="Riddle image" style="width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.10);margin:10px 0;display:block;">` : "";
     wrap.innerHTML = `
       <div class="mSub">${m.caption ? escapeHtml(m.caption) : "A riddle waits. Read it carefully."}</div>
       ${img}
