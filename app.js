@@ -30,6 +30,36 @@ const $$ = (sel, el=document) => [...el.querySelectorAll(sel)];
 
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
+function veilText(txt){
+  const s = String(txt || "");
+  if(!s.trim()) return "—";
+  // Replace ~35% of letters with a veil glyph to keep shape but hide clarity.
+  let out = "";
+  for(let i=0;i<s.length;i++){
+    const ch = s[i];
+    if(/[A-Za-zÀ-ž0-9]/.test(ch) && Math.random() < 0.35){
+      out += "•";
+    }else{
+      out += ch;
+    }
+  }
+  return out;
+}
+
+function isRevealedFor(levelId){
+  return state.reveal.levelId === levelId && state.reveal.unlocked === true;
+}
+
+function lockRevealFor(levelId){
+  state.reveal.levelId = levelId;
+  state.reveal.unlocked = false;
+}
+
+function unlockRevealFor(levelId){
+  state.reveal.levelId = levelId;
+  state.reveal.unlocked = true;
+}
+
 function loadProgress(){
   try{
     const raw = localStorage.getItem(LS_KEY);
@@ -55,7 +85,8 @@ let state = {
   chapterIndex: 0,
   levelIndex: 0,
   lastRoll: null,
-  rollMode: "Normal"
+  rollMode: "Normal",
+  reveal: { levelId: null, unlocked: false }
 };
 
 function getChapter(ci){ return GAME.chapters[ci]; }
@@ -100,19 +131,23 @@ function renderLevel(){
   const ch = getChapter(state.chapterIndex);
   const lvl = getLevel(state.chapterIndex, state.levelIndex);
 
+  // Each turn requires a fresh roll to sharpen the directions.
+  lockRevealFor(lvl.id);
+
   $("#crumb").textContent = `${state.chapterIndex+1}/${GAME.chapters.length} • ${state.levelIndex+1}/${ch.levels.length}`;
   $("#chapterTitle").textContent = ch.title;
   $("#levelTitle").textContent = lvl.title;
-  $("#chapterDirection").textContent = ch.direction;
+  $("#chapterDirection").textContent = isRevealedFor(lvl.id) ? ch.direction : ("The path is blurred. Roll the d20 to sharpen the words.\n\n" + veilText(ch.direction));
   $("#action").textContent = lvl.action || "—";
-  $("#direction").textContent = lvl.direction || "—";
+  $("#direction").textContent = isRevealedFor(lvl.id) ? (lvl.direction || "—") : ("Roll to reveal the true direction.\n\n" + veilText(lvl.direction || "—"));
 
   $("#btnPrev").disabled = (state.chapterIndex===0 && state.levelIndex===0);
-  $("#btnNext").disabled = false;
+  $("#btnNext").disabled = !revealed;
 
   const isDone = isLevelComplete(lvl.id);
+  const revealed = isRevealedFor(lvl.id);
   $("#btnComplete").textContent = isDone ? "Completed ✓" : "Mark level complete";
-  $("#btnComplete").disabled = isDone;
+  $("#btnComplete").disabled = isDone || !revealed;
 
   renderMechanics(lvl);
 }
@@ -811,6 +846,12 @@ function rollD20(){
     }else{
       diceAnimating = false;
       diceResultEl.textContent = String(target);
+      // Rolling grants clarity for the current level.
+      try{
+        const lvl = getLevel(state.chapterIndex, state.levelIndex);
+        unlockRevealFor(lvl.id);
+        renderLevel();
+      }catch(e){}
     }
   };
   requestAnimationFrame(animate);
